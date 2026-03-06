@@ -96,3 +96,4 @@ func GetConfigPath() string {
 	return filepath.Join(home, ".mirusync", "config.yaml")
 }
 
+

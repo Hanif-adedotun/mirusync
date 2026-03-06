@@ -106,3 +106,4 @@ func ClearConflicts(folderName string) error {
 	return SaveState(folderName, state)
 }
 
+

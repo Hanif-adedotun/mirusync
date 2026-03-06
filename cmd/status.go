@@ -102,3 +102,4 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%.1f days", d.Hours()/24)
 }
 
+
