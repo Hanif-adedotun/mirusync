@@ -24,20 +24,18 @@ A production-grade personal devtool for synchronizing folders between two Macs o
 
 ## Getting Started
 
-For complete setup instructions, see [SETUP.md](SETUP.md).
+See [SETUP.md](SETUP.md) for install options (Homebrew, release, Go, or from source).
 
 **Quick setup:**
-1. Install: `go install github.com/hanif/mirusync@latest` or build from source
-2. Initialize: `mirusync init`
-3. Configure: Edit `~/.mirusync/config.yaml`
-4. Verify: `mirusync doctor`
-5. Sync: `mirusync push projects` or `mirusync pull projects`
+1. Install mirusync (e.g. `go install github.com/hanif/mirusync@latest` or use the [Homebrew formula](Formula/mirusync.rb)).
+2. Run **`mirusync init`** and follow the prompts — you’ll enter the other machine’s address and user, set up SSH, pick a folder, and choose sync direction. No config editing required.
+3. Then run `mirusync push <name>`, `mirusync pull <name>`, or `mirusync sync <name>` to sync.
 
 ## Commands
 
 ### `mirusync init`
 
-Initialize mirusync by creating the configuration directory and a sample config file.
+Interactive setup: asks for the other machine’s IP/hostname and user, shows your SSH public key (and can run `ssh-copy-id`), verifies the connection, then asks which folder to sync and in which direction. Writes `~/.mirusync/config.yaml` for you.
 
 ### `mirusync push <folder>`
 

@@ -4,16 +4,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/hanif/mirusync/internal/config"
+	"github.com/hanif/mirusync/internal/prompt"
+	"github.com/hanif/mirusync/internal/ssh"
 	"github.com/spf13/cobra"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize mirusync configuration",
-	Long: `Initialize mirusync by creating the configuration directory and a sample config file.
+	Short: "Set up mirusync (interactive)",
+	Long: `Run an interactive setup to connect this machine to another and choose a folder to sync.
 
-This will create ~/.mirusync/config.yaml with a template configuration.`,
+mirusync will ask for the other machine's address and user, help you set up SSH access,
+verify the connection, then ask which folder to sync. No config editing required.`,
 	RunE: runInit,
 }
 
@@ -26,61 +32,214 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
-
 	configDir := filepath.Join(home, ".mirusync")
 	stateDir := filepath.Join(configDir, "state")
 	configFile := filepath.Join(configDir, "config.yaml")
 
-	// Create directories
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
 		return fmt.Errorf("failed to create state directory: %w", err)
 	}
 
-	// Check if config already exists
 	if _, err := os.Stat(configFile); err == nil {
-		fmt.Printf("Configuration file already exists at %s\n", configFile)
-		fmt.Println("Skipping template creation. Edit the file to customize your setup.")
-		return nil
+		overwrite, err := prompt.Confirm("Configuration already exists. Start fresh and overwrite?", false)
+		if err != nil {
+			return err
+		}
+		if !overwrite {
+			fmt.Println("Keeping existing config. Edit ~/.mirusync/config.yaml to change settings.")
+			return nil
+		}
 	}
 
-	// Create sample config
-	sampleConfig := `# mirusync configuration
-# This file defines your hosts and folders to sync
+	fmt.Println()
+	fmt.Println("  mirusync setup — connect this machine to another and pick a folder to sync.")
+	fmt.Println()
 
-hosts:
-  laptopB:
-    user: hanif
-    host: 192.168.1.23
-    port: 22
-    base_path: /Users/hanif/dev
-
-folders:
-  projects:
-    local_path: /Users/hanif/dev/projects
-    remote_host: laptopB
-    remote_subpath: projects
-    mode: bidirectional
-    delete: false
-    checksum: false  # Use checksums for comparison (slower but safer)
-`
-
-	if err := os.WriteFile(configFile, []byte(sampleConfig), 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+	// --- Other machine ---
+	remoteHost, err := prompt.String("Other machine IP or hostname", "")
+	if err != nil {
+		return err
+	}
+	if remoteHost == "" {
+		return fmt.Errorf("host is required")
 	}
 
-	fmt.Printf("✓ Created configuration directory: %s\n", configDir)
-	fmt.Printf("✓ Created state directory: %s\n", stateDir)
-	fmt.Printf("✓ Created sample configuration: %s\n", configFile)
-	fmt.Println("\nNext steps:")
-	fmt.Println("1. Edit the config file to match your setup")
-	fmt.Println("2. Run 'mirusync doctor' to verify your configuration")
-	fmt.Println("3. Run 'mirusync push <folder>' or 'mirusync pull <folder>' to sync")
+	remoteUser, err := prompt.String("Username on the other machine", "")
+	if err != nil {
+		return err
+	}
+	if remoteUser == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	sshPort, err := prompt.Int("SSH port on the other machine", 22)
+	if err != nil {
+		return err
+	}
+
+	// --- SSH key ---
+	keyPath, keyContent, err := ssh.DefaultPublicKey()
+	if err != nil {
+		fmt.Println()
+		fmt.Println("  No SSH public key found. Create one on this machine, then run 'mirusync init' again.")
+		fmt.Println("  Run:  ssh-keygen -t ed25519")
+		fmt.Println()
+		return err
+	}
+
+	fmt.Println()
+	fmt.Println("  Your SSH public key (add this to the other machine if you haven't already):")
+	fmt.Println()
+	fmt.Println("  " + strings.TrimSpace(string(keyContent)))
+	fmt.Println("  (from " + keyPath + ")")
+	fmt.Println()
+
+	tryCopyID, err := prompt.Confirm("Try to install this key on the other machine now (ssh-copy-id)?", true)
+	if err != nil {
+		return err
+	}
+	if tryCopyID {
+		fmt.Println("  Running ssh-copy-id (you may need to enter the other machine's password)...")
+		if err := ssh.CopyID(remoteUser, remoteHost, sshPort); err != nil {
+			fmt.Printf("  Warning: %v\n", err)
+			prompt.Pause("  Add the key manually to the other machine, then continue here.")
+		} else {
+			fmt.Println("  Key installed successfully.")
+		}
+	} else {
+		prompt.Pause("  Add the key to the other machine (e.g. append to ~/.ssh/authorized_keys), then continue here.")
+	}
+
+	fmt.Println("  Checking connection to the other machine...")
+	if err := ssh.CheckConnectivityRaw(remoteUser, remoteHost, sshPort, 10*time.Second); err != nil {
+		return fmt.Errorf("could not connect: %w\n  Fix SSH access and run 'mirusync init' again", err)
+	}
+	fmt.Println("  Connection OK.")
+	fmt.Println()
+
+	// --- Host name ---
+	hostName, err := prompt.String("Name for this host in config (e.g. laptopB)", "remote")
+	if err != nil {
+		return err
+	}
+	if hostName == "" {
+		hostName = "remote"
+	}
+
+	remoteBasePath, err := prompt.String("Base path on the other machine (e.g. /Users/you/dev)", "")
+	if err != nil {
+		return err
+	}
+	if remoteBasePath == "" {
+		return fmt.Errorf("remote base path is required")
+	}
+	remoteBasePath = strings.TrimSuffix(remoteBasePath, "/")
+
+	// --- Folder to sync ---
+	defaultLocal := filepath.Join(home, "dev", "projects")
+	localPath, err := prompt.String("Local folder to sync (this machine)", defaultLocal)
+	if err != nil {
+		return err
+	}
+	if localPath == "" {
+		localPath = defaultLocal
+	}
+	if strings.HasPrefix(localPath, "~") {
+		localPath = filepath.Join(home, strings.TrimPrefix(localPath, "~"))
+	}
+	localPath, err = filepath.Abs(localPath)
+	if err != nil {
+		return fmt.Errorf("invalid local path: %w", err)
+	}
+
+	// Ensure local dir exists
+	if _, err := os.Stat(localPath); os.IsNotExist(err) {
+		create, err := prompt.Confirm("Local folder doesn't exist. Create it?", true)
+		if err != nil {
+			return err
+		}
+		if create {
+			if err := os.MkdirAll(localPath, 0755); err != nil {
+				return fmt.Errorf("failed to create folder: %w", err)
+			}
+		}
+	}
+
+	defaultSubpath := filepath.Base(localPath)
+	remoteSubpath, err := prompt.String("Path on the other machine (under base path)", defaultSubpath)
+	if err != nil {
+		return err
+	}
+	if remoteSubpath == "" {
+		remoteSubpath = defaultSubpath
+	}
+	remoteSubpath = strings.Trim(remoteSubpath, "/")
+
+	modeOptions := []string{"Push only (this → other)", "Pull only (other → this)", "Both (sync both ways)"}
+	modeIdx, err := prompt.Select("Sync direction", modeOptions, 2)
+	if err != nil {
+		return err
+	}
+	var mode string
+	switch modeIdx {
+	case 0:
+		mode = "push"
+	case 1:
+		mode = "pull"
+	default:
+		mode = "bidirectional"
+	}
+
+	folderName := filepath.Base(localPath)
+	if folderName == "." || folderName == "/" {
+		folderName = "projects"
+	}
+	folderName, err = prompt.String("Name for this folder in mirusync", folderName)
+	if err != nil {
+		return err
+	}
+	if folderName == "" {
+		folderName = "projects"
+	}
+
+	// Write config
+	cfg := &config.Config{
+		Hosts: map[string]config.Host{
+			hostName: {
+				User:     remoteUser,
+				Host:     remoteHost,
+				Port:     sshPort,
+				BasePath: remoteBasePath,
+			},
+		},
+		Folders: map[string]config.Folder{
+			folderName: {
+				LocalPath:     localPath,
+				RemoteHost:    hostName,
+				RemoteSubpath: remoteSubpath,
+				Mode:          mode,
+				Delete:        false,
+				Checksum:      false,
+			},
+		},
+	}
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Println("  ✓ Setup complete. Config saved to " + configFile)
+	fmt.Println()
+	fmt.Println("  Next:")
+	fmt.Printf("    mirusync push %s   — send your folder to the other machine\n", folderName)
+	fmt.Printf("    mirusync pull %s   — get the folder from the other machine\n", folderName)
+	if mode == "bidirectional" {
+		fmt.Printf("    mirusync sync %s   — sync both ways\n", folderName)
+	}
+	fmt.Println()
 
 	return nil
 }
-
-
