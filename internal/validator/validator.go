@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/hanif/mirusync/internal/config"
 )
@@ -64,12 +63,8 @@ func validatePath(path, label string) error {
 		return fmt.Errorf("configuration error: %s '%s' is invalid: %w", label, path, err)
 	}
 
-	// Check if path is forbidden
-	for _, forbidden := range forbiddenPaths {
-		if absPath == forbidden || strings.HasPrefix(absPath, forbidden+"/") {
-			return fmt.Errorf("safety error: %s '%s' is in a forbidden directory. Use --force to override (not recommended)", label, absPath)
-		}
-	}
+	// Forbidden-path check is done in CheckForbiddenPath(path, force) so --force is respected.
+	// Here we only validate emptiness, resolvability, and existence.
 
 	// Check if local path exists (for local_path only)
 	if label == "local_path" {
@@ -106,17 +101,25 @@ func ValidateHost(hostName string) error {
 	return nil
 }
 
+// CheckForbiddenPath returns an error if path is one of the forbidden roots (e.g. /, /Users, /System).
+// Paths under /Users/username/... are allowed; only the exact roots are forbidden.
+// If force is true, the check is skipped.
 func CheckForbiddenPath(path string, force bool) error {
+	if force {
+		return nil
+	}
+
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
+	absPath = filepath.Clean(absPath)
 
 	for _, forbidden := range forbiddenPaths {
-		if absPath == forbidden || strings.HasPrefix(absPath, forbidden+"/") {
-			if !force {
-				return fmt.Errorf("safety error: path '%s' is in a forbidden directory. Use --force to override (not recommended)", absPath)
-			}
+		// Only forbid exact match: syncing the root itself (e.g. /, /Users, /System).
+		// Do not forbid /Users/hanif/Documents/... or other user content.
+		if absPath == forbidden {
+			return fmt.Errorf("safety error: path '%s' is a forbidden directory. Use --force to override (not recommended)", absPath)
 		}
 	}
 
