@@ -38,7 +38,13 @@ func BuildSSHCommand(hostName string) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("ssh -p %d -o StrictHostKeyChecking=no %s@%s", host.Port, host.User, host.Host)
+	// For rsync's -e option we must pass ONLY the remote shell (ssh + options),
+	// NOT the user@host target. rsync adds user@host itself via the source/dest.
+	// Example:
+	//   rsync -e "ssh -p 22 -o StrictHostKeyChecking=no" src user@host:/path
+	// If we include user@host here, the remote shell sees "user@host" as the command
+	// to run, which leads to `command not found: user@host`.
+	return fmt.Sprintf("ssh -p %d -o StrictHostKeyChecking=no", host.Port)
 }
 
 func BuildRemotePath(hostName string, subpath string) string {

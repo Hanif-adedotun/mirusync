@@ -10,6 +10,7 @@ import (
 	"github.com/hanif/mirusync/internal/config"
 	"github.com/hanif/mirusync/internal/prompt"
 	"github.com/hanif/mirusync/internal/ssh"
+	"github.com/hanif/mirusync/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,22 +45,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	if _, err := os.Stat(configFile); err == nil {
-		overwrite, err := prompt.Confirm("Configuration already exists. Start fresh and overwrite?", false)
+		fmt.Println()
+		overwrite, err := prompt.ConfirmStyled("Configuration already exists. Start fresh and overwrite?", false, prompt.Chevron, true)
 		if err != nil {
 			return err
 		}
 		if !overwrite {
-			fmt.Println("Keeping existing config. Edit ~/.mirusync/config.yaml to change settings.")
+			fmt.Println()
+			fmt.Println("  Keeping existing config. Edit ~/.mirusync/config.yaml to change settings.")
 			return nil
 		}
 	}
 
 	fmt.Println()
-	fmt.Println("  mirusync setup — connect this machine to another and pick a folder to sync.")
-	fmt.Println()
+	tui.PrintLogo()
 
 	// --- Other machine ---
-	remoteHost, err := prompt.String("Other machine IP or hostname", "")
+	remoteHost, err := prompt.StringStyled("Other machine IP or hostname", "", prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -67,7 +69,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("host is required")
 	}
 
-	remoteUser, err := prompt.String("Username on the other machine", "")
+	remoteUser, err := prompt.StringStyled("Username on the other machine", "", prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -75,7 +77,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("username is required")
 	}
 
-	sshPort, err := prompt.Int("SSH port on the other machine", 22)
+	sshPort, err := prompt.IntStyled("SSH port on the other machine", 22, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -97,7 +99,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("  (from " + keyPath + ")")
 	fmt.Println()
 
-	tryCopyID, err := prompt.Confirm("Try to install this key on the other machine now (ssh-copy-id)?", true)
+	tryCopyID, err := prompt.ConfirmStyled("Try to install this key on the other machine now (ssh-copy-id)?", true, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -121,7 +123,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// --- Host name ---
-	hostName, err := prompt.String("Name for this host in config (e.g. laptopB)", "remote")
+	hostName, err := prompt.StringStyled("Name for this host in config (e.g. laptopB)", "remote", prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -129,7 +131,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		hostName = "remote"
 	}
 
-	remoteBasePath, err := prompt.String("Base path on the other machine (e.g. /Users/you/dev)", "")
+	remoteBasePath, err := prompt.StringStyled("Base path on the other machine (e.g. /Users/you/dev)", "", prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -140,7 +142,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// --- Folder to sync ---
 	defaultLocal := filepath.Join(home, "dev", "projects")
-	localPath, err := prompt.String("Local folder to sync (this machine)", defaultLocal)
+	localPath, err := prompt.StringStyled("Local folder to sync (this machine)", defaultLocal, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -157,7 +159,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Ensure local dir exists
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
-		create, err := prompt.Confirm("Local folder doesn't exist. Create it?", true)
+		create, err := prompt.ConfirmStyled("Local folder doesn't exist. Create it?", true, prompt.Chevron, true)
 		if err != nil {
 			return err
 		}
@@ -169,7 +171,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	defaultSubpath := filepath.Base(localPath)
-	remoteSubpath, err := prompt.String("Path on the other machine (under base path)", defaultSubpath)
+	remoteSubpath, err := prompt.StringStyled("Path on the other machine (under base path)", defaultSubpath, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -179,7 +181,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	remoteSubpath = strings.Trim(remoteSubpath, "/")
 
 	modeOptions := []string{"Push only (this → other)", "Pull only (other → this)", "Both (sync both ways)"}
-	modeIdx, err := prompt.Select("Sync direction", modeOptions, 2)
+	modeIdx, err := prompt.SelectStyled("Sync direction", modeOptions, 2, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}
@@ -197,7 +199,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if folderName == "." || folderName == "/" {
 		folderName = "projects"
 	}
-	folderName, err = prompt.String("Name for this folder in mirusync", folderName)
+	folderName, err = prompt.StringStyled("Name for this folder in mirusync", folderName, prompt.Chevron, true)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,26 @@ import (
 	"strings"
 )
 
+// Prefix and spacing for init-style prompts (chevron left of question, spaced out).
+const (
+	Chevron = "  > "
+	Circle  = "  ○ "
+)
+
+func lineBreakAndPrefix(prefix string) {
+	fmt.Println()
+	fmt.Print(prefix)
+}
+
 func String(prompt string, defaultVal string) (string, error) {
+	return StringStyled(prompt, defaultVal, "", false)
+}
+
+// StringStyled prompts for a string. If prefix is non-empty, prints a blank line and prefix before the question.
+func StringStyled(prompt string, defaultVal string, prefix string, spaced bool) (string, error) {
+	if spaced && prefix != "" {
+		lineBreakAndPrefix(prefix)
+	}
 	if defaultVal != "" {
 		fmt.Printf("%s [%s]: ", prompt, defaultVal)
 	} else {
@@ -26,6 +45,13 @@ func String(prompt string, defaultVal string) (string, error) {
 }
 
 func Int(prompt string, defaultVal int) (int, error) {
+	return IntStyled(prompt, defaultVal, "", false)
+}
+
+func IntStyled(prompt string, defaultVal int, prefix string, spaced bool) (int, error) {
+	if spaced && prefix != "" {
+		lineBreakAndPrefix(prefix)
+	}
 	fmt.Printf("%s [%d]: ", prompt, defaultVal)
 	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
@@ -43,6 +69,13 @@ func Int(prompt string, defaultVal int) (int, error) {
 }
 
 func Select(prompt string, options []string, defaultIdx int) (int, error) {
+	return SelectStyled(prompt, options, defaultIdx, "", false)
+}
+
+func SelectStyled(prompt string, options []string, defaultIdx int, prefix string, spaced bool) (int, error) {
+	if spaced && prefix != "" {
+		lineBreakAndPrefix(prefix)
+	}
 	for i, o := range options {
 		fmt.Printf("  %d) %s\n", i+1, o)
 	}
@@ -67,6 +100,13 @@ func Select(prompt string, options []string, defaultIdx int) (int, error) {
 }
 
 func Confirm(prompt string, defaultYes bool) (bool, error) {
+	return ConfirmStyled(prompt, defaultYes, "", false)
+}
+
+func ConfirmStyled(prompt string, defaultYes bool, prefix string, spaced bool) (bool, error) {
+	if spaced && prefix != "" {
+		lineBreakAndPrefix(prefix)
+	}
 	def := "y"
 	if !defaultYes {
 		def = "n"
