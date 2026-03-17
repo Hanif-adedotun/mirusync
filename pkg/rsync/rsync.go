@@ -61,7 +61,8 @@ func buildArgs(options RSyncOptions) []string {
 	}
 
 	if options.DryRun {
-		args = append(args, "-n") // dry-run
+		// Dry-run: do not make changes, and emit a machine-parseable line per change.
+		args = append(args, "-n", "--out-format=%i|%n") // dry-run with structured output
 	}
 
 	if options.Delete {
@@ -85,65 +86,36 @@ func parseDryRunOutput(output string) *DryRunResult {
 	result := &DryRunResult{}
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
-
-	sawHeader := false
-	sawMarkers := false
-	var lines []string
-
 	for scanner.Scan() {
-		line := scanner.Text()
-		lines = append(lines, line)
-
-		if strings.Contains(line, "sending incremental file list") {
-			sawHeader = true
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
 
-		// Primary rsync marker-based parsing (modern rsync)
-		if strings.HasPrefix(line, ">f") || strings.HasPrefix(line, ">f+") {
-			result.FilesAdded++
-			sawMarkers = true
-		} else if strings.HasPrefix(line, ">f.st") {
-			result.FilesModified++
-			sawMarkers = true
-		} else if strings.HasPrefix(line, "*deleting") {
-			result.FilesDeleted++
-			sawMarkers = true
-		}
-
-		// Try to extract size (format: "total size is 12345")
-		if strings.Contains(line, "total size is") {
+		// Extract total size from summary line, if present.
+		if strings.HasPrefix(line, "total size is") {
 			var size int64
 			fmt.Sscanf(line, "total size is %d", &size)
 			result.TotalSize = size
+			continue
 		}
-	}
 
-	// Fallback for macOS / older rsync where markers may be missing:
-	// after 'sending incremental file list', treat each non-empty, non-summary
-	// line as a file candidate when no markers were seen.
-	if sawHeader && !sawMarkers {
-		inFiles := false
-		for _, line := range lines {
-			if strings.Contains(line, "sending incremental file list") {
-				inFiles = true
-				continue
-			}
-			if !inFiles {
-				continue
-			}
-			trim := strings.TrimSpace(line)
-			if trim == "" {
-				continue
-			}
-			// Skip summary lines
-			if strings.HasPrefix(trim, "sent ") ||
-				strings.HasPrefix(trim, "received ") ||
-				strings.HasPrefix(trim, "total size is") {
-				continue
-			}
-			// Treat as an added/changed file. We can't distinguish safely here.
+		// Expect out-format lines: %i|%n
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) != 2 {
+			// Not an out-format line; ignore (could be header/summary).
+			continue
+		}
+		change := parts[0]
+
+		// change is rsync's itemize string. First char indicates the type of update.
+		// See rsync man page, "The --itemize-changes option".
+		if strings.HasPrefix(change, ">f") {
+			// For now, treat all file updates as "files to add or modify".
+			// We can split into added/modified later if needed.
 			result.FilesAdded++
+		} else if strings.HasPrefix(change, "*deleting") {
+			result.FilesDeleted++
 		}
 	}
 
