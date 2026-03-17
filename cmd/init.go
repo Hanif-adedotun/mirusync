@@ -83,11 +83,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// --- SSH key ---
-	keyPath, keyContent, err := ssh.DefaultPublicKey()
+	// Use a dedicated, passphrase-less key for mirusync so we don't prompt for a key
+	// passphrase every time. The user will still authenticate to the remote machine
+	// with their laptop password when ssh-copy-id runs.
+	keyPath, keyContent, err := ssh.EnsureMirusyncKey()
 	if err != nil {
 		fmt.Println()
-		fmt.Println("  No SSH public key found. Create one on this machine, then run 'mirusync init' again.")
-		fmt.Println("  Run:  ssh-keygen -t ed25519")
+		fmt.Println("  Failed to prepare mirusync SSH key.")
+		fmt.Println("  You can create one manually with:")
+		fmt.Println("    ssh-keygen -t ed25519 -N \"\" -f ~/.ssh/id_mirusync")
 		fmt.Println()
 		return err
 	}
@@ -105,7 +109,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 	if tryCopyID {
 		fmt.Println("  Running ssh-copy-id (you may need to enter the other machine's password)...")
-		if err := ssh.CopyID(remoteUser, remoteHost, sshPort); err != nil {
+		if err := ssh.CopyID(keyPath, remoteUser, remoteHost, sshPort); err != nil {
 			fmt.Printf("  Warning: %v\n", err)
 			prompt.Pause("  Add the key manually to the other machine, then continue here.")
 		} else {

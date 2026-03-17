@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hanif/mirusync/internal/config"
+	"github.com/hanif/mirusync/internal/ssh"
 	"github.com/hanif/mirusync/internal/state"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 0 {
 		// Show status for all folders
-		fmt.Println("📊 Sync Status for all folders:\n")
+		fmt.Println("📊 Sync Status for all folders:")
+		fmt.Println()
 		for folderName := range cfg.Folders {
 			if err := showFolderStatus(folderName); err != nil {
 				fmt.Printf("Error showing status for %s: %v\n", folderName, err)
@@ -56,7 +58,8 @@ func showFolderStatus(folderName string) error {
 
 	fmt.Printf("📁 Folder: %s\n", folderName)
 	fmt.Printf("   Local path: %s\n", folder.LocalPath)
-	fmt.Printf("   Remote: %s\n", folder.RemoteHost)
+	fmt.Printf("   Remote host: %s\n", folder.RemoteHost)
+	fmt.Printf("   Remote path: %s\n", ssh.BuildRSyncRemotePath(folder.RemoteHost, folder.RemoteSubpath))
 	fmt.Printf("   Mode: %s\n", folder.Mode)
 	fmt.Printf("   Delete enabled: %v\n", folder.Delete)
 	fmt.Printf("   Checksum enabled: %v\n", folder.Checksum)

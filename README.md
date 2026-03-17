@@ -43,6 +43,7 @@ Push local folder to remote (one-way: local → remote).
 
 **Options:**
 - `--dry-run`: Show what would be synced without actually syncing
+- `--verbose-dry-run`: Also print raw rsync dry-run output (useful for debugging)
 - `--force`: Override safety checks (not recommended)
 
 **Example:**
@@ -57,6 +58,7 @@ Pull remote folder to local (one-way: remote → local).
 
 **Options:**
 - `--dry-run`: Show what would be synced without actually syncing
+- `--verbose-dry-run`: Also print raw rsync dry-run output (useful for debugging)
 - `--force`: Override safety checks (not recommended)
 
 **Example:**
@@ -70,6 +72,7 @@ Bidirectional sync between local and remote. Requires the folder to be configure
 
 **Options:**
 - `--dry-run`: Show what would be synced (default: true)
+- `--verbose-dry-run`: Also print raw rsync dry-run output (useful for debugging)
 - `--force`: Override safety checks (not recommended)
 
 **Example:**

@@ -85,16 +85,30 @@ func parseDryRunOutput(output string) *DryRunResult {
 	result := &DryRunResult{}
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
+
+	sawHeader := false
+	sawMarkers := false
+	var lines []string
+
 	for scanner.Scan() {
 		line := scanner.Text()
+		lines = append(lines, line)
 
-		// Count files
+		if strings.Contains(line, "sending incremental file list") {
+			sawHeader = true
+			continue
+		}
+
+		// Primary rsync marker-based parsing (modern rsync)
 		if strings.HasPrefix(line, ">f") || strings.HasPrefix(line, ">f+") {
 			result.FilesAdded++
+			sawMarkers = true
 		} else if strings.HasPrefix(line, ">f.st") {
 			result.FilesModified++
+			sawMarkers = true
 		} else if strings.HasPrefix(line, "*deleting") {
 			result.FilesDeleted++
+			sawMarkers = true
 		}
 
 		// Try to extract size (format: "total size is 12345")
@@ -102,6 +116,34 @@ func parseDryRunOutput(output string) *DryRunResult {
 			var size int64
 			fmt.Sscanf(line, "total size is %d", &size)
 			result.TotalSize = size
+		}
+	}
+
+	// Fallback for macOS / older rsync where markers may be missing:
+	// after 'sending incremental file list', treat each non-empty, non-summary
+	// line as a file candidate when no markers were seen.
+	if sawHeader && !sawMarkers {
+		inFiles := false
+		for _, line := range lines {
+			if strings.Contains(line, "sending incremental file list") {
+				inFiles = true
+				continue
+			}
+			if !inFiles {
+				continue
+			}
+			trim := strings.TrimSpace(line)
+			if trim == "" {
+				continue
+			}
+			// Skip summary lines
+			if strings.HasPrefix(trim, "sent ") ||
+				strings.HasPrefix(trim, "received ") ||
+				strings.HasPrefix(trim, "total size is") {
+				continue
+			}
+			// Treat as an added/changed file. We can't distinguish safely here.
+			result.FilesAdded++
 		}
 	}
 

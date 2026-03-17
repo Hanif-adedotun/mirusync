@@ -64,7 +64,7 @@ mirusync init
 The wizard will:
 
 1. **Other machine** — Ask for the other computer’s IP or hostname and the username you use to log in.
-2. **SSH key** — Show your SSH public key and optionally run `ssh-copy-id` so you can log in without a password. If you don’t have a key yet, it will tell you to run `ssh-keygen -t ed25519` and then run `mirusync init` again.
+2. **SSH key** — Create (or reuse) a dedicated `~/.ssh/id_mirusync` SSH key **without a passphrase** for mirusync and optionally run `ssh-copy-id` so you can log in without typing the SSH key passphrase. You’ll still enter the other laptop’s password when ssh-copy-id runs the first time.
 3. **Verify** — Test SSH to the other machine and only continue if that succeeds.
 4. **Folder** — Ask which folder on this machine to sync and where it should live on the other machine (e.g. `~/dev/projects` ↔ `projects`).
 5. **Direction** — Choose push only, pull only, or sync both ways.
@@ -83,7 +83,13 @@ No manual editing of config is required; you can change things later in `~/.miru
 ## Requirements
 
 - **This machine and the other machine**: SSH and `rsync` (macOS has these; on Linux install `openssh-client` and `rsync` if needed).
-- **SSH key**: Generate with `ssh-keygen -t ed25519` if you don’t have one. The init wizard will show your public key and can run `ssh-copy-id` for you.
+- **SSH key**: mirusync will create its own `~/.ssh/id_mirusync` key without a passphrase on first run of `mirusync init` if needed, or you can create one manually:
+
+  ```bash
+  ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_mirusync
+  ```
+
+  This key is used only for mirusync; your existing SSH keys and workflows are untouched.
 
 ---
 
