@@ -61,7 +61,8 @@ func buildArgs(options RSyncOptions) []string {
 	}
 
 	if options.DryRun {
-		args = append(args, "-n") // dry-run
+		// Dry-run: do not make changes, and emit a machine-parseable line per change.
+		args = append(args, "-n", "--out-format=%i|%n") // dry-run with structured output
 	}
 
 	if options.Delete {
@@ -86,22 +87,35 @@ func parseDryRunOutput(output string) *DryRunResult {
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
-		line := scanner.Text()
-
-		// Count files
-		if strings.HasPrefix(line, ">f") || strings.HasPrefix(line, ">f+") {
-			result.FilesAdded++
-		} else if strings.HasPrefix(line, ">f.st") {
-			result.FilesModified++
-		} else if strings.HasPrefix(line, "*deleting") {
-			result.FilesDeleted++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
 		}
 
-		// Try to extract size (format: "total size is 12345")
-		if strings.Contains(line, "total size is") {
+		// Extract total size from summary line, if present.
+		if strings.HasPrefix(line, "total size is") {
 			var size int64
 			fmt.Sscanf(line, "total size is %d", &size)
 			result.TotalSize = size
+			continue
+		}
+
+		// Expect out-format lines: %i|%n
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) != 2 {
+			// Not an out-format line; ignore (could be header/summary).
+			continue
+		}
+		change := parts[0]
+
+		// change is rsync's itemize string. First char indicates the type of update.
+		// See rsync man page, "The --itemize-changes option".
+		if strings.HasPrefix(change, ">f") {
+			// For now, treat all file updates as "files to add or modify".
+			// We can split into added/modified later if needed.
+			result.FilesAdded++
+		} else if strings.HasPrefix(change, "*deleting") {
+			result.FilesDeleted++
 		}
 	}
 

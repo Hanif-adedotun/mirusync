@@ -13,11 +13,12 @@ import (
 )
 
 type Engine struct {
-	force bool
+	force         bool
+	verboseDryRun bool
 }
 
-func NewEngine(force bool) *Engine {
-	return &Engine{force: force}
+func NewEngine(force bool, verboseDryRun bool) *Engine {
+	return &Engine{force: force, verboseDryRun: verboseDryRun}
 }
 
 func (e *Engine) Push(folderName string, dryRunOnly bool) error {
@@ -71,6 +72,12 @@ func (e *Engine) Push(folderName string, dryRunOnly bool) error {
 	}
 	if dryRunResult.TotalSize > 0 {
 		fmt.Printf("  📦 Total size: %s\n", formatSize(dryRunResult.TotalSize))
+	}
+
+	if e.verboseDryRun {
+		fmt.Println()
+		fmt.Println("Raw rsync dry-run output:")
+		fmt.Println(dryRunResult.Output)
 	}
 
 	if dryRunOnly {
@@ -150,6 +157,12 @@ func (e *Engine) Pull(folderName string, dryRunOnly bool) error {
 	}
 	if dryRunResult.TotalSize > 0 {
 		fmt.Printf("  📦 Total size: %s\n", formatSize(dryRunResult.TotalSize))
+	}
+
+	if e.verboseDryRun {
+		fmt.Println()
+		fmt.Println("Raw rsync dry-run output:")
+		fmt.Println(dryRunResult.Output)
 	}
 
 	if dryRunOnly {

@@ -96,4 +96,21 @@ func GetConfigPath() string {
 	return filepath.Join(home, ".mirusync", "config.yaml")
 }
 
+// Save writes the configuration to the default config path and clears cached config.
+func Save(cfg *Config) error {
+	path := GetConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	globalConfig = nil
+	return nil
+}
+
 

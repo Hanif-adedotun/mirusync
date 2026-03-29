@@ -9,6 +9,7 @@ import (
 
 var pullDryRun bool
 var pullForce bool
+var pullVerboseDryRun bool
 
 var pullCmd = &cobra.Command{
 	Use:   "pull <folder>",
@@ -26,13 +27,14 @@ Example:
 func init() {
 	pullCmd.Flags().BoolVar(&pullDryRun, "dry-run", false, "Show what would be synced without actually syncing")
 	pullCmd.Flags().BoolVar(&pullForce, "force", false, "Override safety checks (not recommended)")
+	pullCmd.Flags().BoolVar(&pullVerboseDryRun, "verbose-dry-run", false, "Show raw rsync dry-run output")
 	rootCmd.AddCommand(pullCmd)
 }
 
 func runPull(cmd *cobra.Command, args []string) error {
 	folderName := args[0]
 
-	eng := engine.NewEngine(pullForce)
+	eng := engine.NewEngine(pullForce, pullVerboseDryRun)
 	if err := eng.Pull(folderName, pullDryRun); err != nil {
 		return fmt.Errorf("pull failed: %w", err)
 	}

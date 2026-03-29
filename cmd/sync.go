@@ -9,6 +9,7 @@ import (
 
 var syncDryRun bool
 var syncForce bool
+var syncVerboseDryRun bool
 
 var syncCmd = &cobra.Command{
 	Use:   "sync <folder>",
@@ -31,13 +32,14 @@ Example:
 func init() {
 	syncCmd.Flags().BoolVar(&syncDryRun, "dry-run", true, "Show what would be synced without actually syncing (default: true)")
 	syncCmd.Flags().BoolVar(&syncForce, "force", false, "Override safety checks (not recommended)")
+	syncCmd.Flags().BoolVar(&syncVerboseDryRun, "verbose-dry-run", false, "Show raw rsync dry-run output")
 	rootCmd.AddCommand(syncCmd)
 }
 
 func runSync(cmd *cobra.Command, args []string) error {
 	folderName := args[0]
 
-	eng := engine.NewEngine(syncForce)
+	eng := engine.NewEngine(syncForce, syncVerboseDryRun)
 	if err := eng.Sync(folderName, syncDryRun); err != nil {
 		return fmt.Errorf("sync failed: %w", err)
 	}

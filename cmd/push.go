@@ -9,6 +9,7 @@ import (
 
 var pushDryRun bool
 var pushForce bool
+var pushVerboseDryRun bool
 
 var pushCmd = &cobra.Command{
 	Use:   "push <folder>",
@@ -26,13 +27,14 @@ Example:
 func init() {
 	pushCmd.Flags().BoolVar(&pushDryRun, "dry-run", false, "Show what would be synced without actually syncing")
 	pushCmd.Flags().BoolVar(&pushForce, "force", false, "Override safety checks (not recommended)")
+	pushCmd.Flags().BoolVar(&pushVerboseDryRun, "verbose-dry-run", false, "Show raw rsync dry-run output")
 	rootCmd.AddCommand(pushCmd)
 }
 
 func runPush(cmd *cobra.Command, args []string) error {
 	folderName := args[0]
 
-	eng := engine.NewEngine(pushForce)
+	eng := engine.NewEngine(pushForce, pushVerboseDryRun)
 	if err := eng.Push(folderName, pushDryRun); err != nil {
 		return fmt.Errorf("push failed: %w", err)
 	}
