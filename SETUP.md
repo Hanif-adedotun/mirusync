@@ -1,6 +1,8 @@
-# mirusync Setup
+# mirusync Advanced Setup
 
-Get syncing in two steps: **install** the tool, then run **`mirusync init`** and follow the prompts. No config editing required.
+For most users, start with [INSTALL.md](INSTALL.md).
+
+This page is for advanced and developer-focused install/setup paths (Go install, source build, and package manager maintenance).
 
 ---
 

@@ -1,35 +1,47 @@
 # mirusync
 
-A production-grade personal devtool for synchronizing folders between two Macs over SSH using rsync.
+Simple folder sync between two machines over SSH.
 
-## Overview
+For most people, the easiest path is:
+1. Download a release from [GitHub Releases](https://github.com/hanif/mirusync/releases)
+2. Run `mirusync init`
+3. Use `mirusync push`, `mirusync pull`, or `mirusync sync`
 
-`mirusync` is a CLI tool designed for developers who work across multiple machines and need reliable, safe folder synchronization. It provides:
+## Install (Recommended)
 
-- **One-way sync** (push/pull) for simple workflows
-- **Bidirectional sync** with conflict detection
-- **Safety guardrails** to prevent accidental data loss
-- **Dry-run preview** before any changes
-- **State management** for tracking sync history
-- **SSH-based** synchronization (no central server required)
+See [INSTALL.md](INSTALL.md) for step-by-step instructions with:
+- Mac (Apple Silicon and Intel) release downloads
+- Windows release downloads
+- Homebrew as an optional convenience on macOS
 
-## Features
+If you are technical and prefer Go tooling, see [SETUP.md](SETUP.md).
+To publish new versions, follow [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
-- ✅ Minimal surface area - uses system SSH and rsync
-- ✅ Strong correctness guarantees with validation layers
-- ✅ Extensible architecture
-- ✅ Production-ready error handling
-- ✅ Conflict detection and reporting
-- ✅ Configurable per-folder settings
+## What mirusync does
 
-## Getting Started
+`mirusync` helps you keep project folders in sync across two machines with clear safety checks.
 
-See [SETUP.md](SETUP.md) for install options (Homebrew, release, Go, or from source).
+- One-way sync (`push` / `pull`)
+- Bidirectional sync with conflict detection (`sync`)
+- Dry-run preview before changes
+- SSH-based sync (no central server)
+- Config/state files managed under `~/.mirusync`
 
-**Quick setup:**
-1. Install mirusync (e.g. `go install github.com/hanif/mirusync@latest` or use the [Homebrew formula](Formula/mirusync.rb)).
-2. Run **`mirusync init`** and follow the prompts — you’ll enter the other machine’s address and user, set up SSH, pick a folder, and choose sync direction. No config editing required.
-3. Then run `mirusync push <name>`, `mirusync pull <name>`, or `mirusync sync <name>` to sync.
+## Quick Start
+
+After installing:
+
+```bash
+mirusync init
+```
+
+Then:
+
+```bash
+mirusync push <name>
+mirusync pull <name>
+mirusync sync <name>
+```
 
 ## Commands
 
@@ -106,7 +118,7 @@ mirusync doctor
 
 ## Configuration
 
-See [SETUP.md](SETUP.md) for detailed configuration instructions including:
+See [SETUP.md](SETUP.md) for advanced configuration details including:
 - Host and folder configuration
 - SSH setup
 - Configuration options
@@ -191,6 +203,8 @@ go build -o mirusync
 ```bash
 go test ./...
 ```
+
+For advanced install/build options (`go install`, source build, Homebrew formula workflow), see [SETUP.md](SETUP.md).
 
 ## License
 
