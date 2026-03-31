@@ -10,6 +10,7 @@ import (
 )
 
 var cfgFile string
+var version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:   "mirusync",
@@ -18,7 +19,7 @@ var rootCmd = &cobra.Command{
 
 It uses rsync for efficient file transfers and provides safety guardrails
 for production use.`,
-	Version: "0.1.0",
+	Version: version,
 }
 
 func Execute() error {
