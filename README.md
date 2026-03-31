@@ -1,4 +1,7 @@
+
 # mirusync
+
+https://github.com/user-attachments/assets/6aa6edf2-de7e-4bef-a8c8-41f7996f4a08
 
 Simple folder sync between two machines over SSH.
 
