@@ -77,8 +77,17 @@ After that you can run:
 - `mirusync push <name>` — send folder to the other machine  
 - `mirusync pull <name>` — get folder from the other machine  
 - `mirusync sync <name>` — sync both ways (if you chose that)
+- `mirusync edit <name>` — interactively edit an existing saved config
 
 No manual editing of config is required; you can change things later in `~/.mirusync/config.yaml` if you want.
+
+To edit an existing saved config interactively:
+
+```bash
+mirusync edit grad-school
+```
+
+The editor shows numbered fields, current values, asks for a new value, then asks for confirmation before saving each change.
 
 ---
 
@@ -134,3 +143,17 @@ The formula in this repo is set up so you can run that from the cloned directory
 | Want to add another folder or host later | Edit `~/.mirusync/config.yaml` (see README for the format), or run `mirusync init` again and choose to overwrite/start fresh. |
 
 Running `mirusync doctor` checks your config and SSH connectivity and can help narrow down issues.
+
+### Find internal IP (macOS)
+
+Use these commands on each machine to find its LAN address:
+
+```bash
+# Wi-Fi
+ipconfig getifaddr en0
+
+# Ethernet (if used)
+ipconfig getifaddr en1
+```
+
+If `mirusync pull`/`push` times out, confirm the configured host IP matches the current output on the remote machine.
