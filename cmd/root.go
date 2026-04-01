@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hanif/mirusync/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,6 +21,12 @@ var rootCmd = &cobra.Command{
 It uses rsync for efficient file transfers and provides safety guardrails
 for production use.`,
 	Version: version,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Show branding on regular command runs across the CLI.
+		if cmd.Name() != "completion" {
+			tui.PrintLogo()
+		}
+	},
 }
 
 func Execute() error {
