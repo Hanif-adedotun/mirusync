@@ -119,6 +119,21 @@ Diagnose configuration and connectivity issues. Validates:
 mirusync doctor
 ```
 
+### `mirusync edit <folder>`
+
+Interactively edit an existing saved folder config with numbered options.
+For each selected field, mirusync shows the current value, asks for a new value,
+then asks for confirmation before saving.
+
+You can edit:
+- Folder fields: `local_path`, `remote_host`, `remote_subpath`, `mode`, `delete`, `checksum`
+- Linked host fields: `user`, `host`, `port`, `base_path`
+
+**Example:**
+```bash
+mirusync edit grad-school
+```
+
 ## Configuration
 
 See [SETUP.md](SETUP.md) for advanced configuration details including:
@@ -172,6 +187,17 @@ mirusync doctor
 # Test SSH connectivity
 ssh -p 22 user@host "echo ok"
 ```
+
+**Find your internal IP (LAN) on macOS:**
+```bash
+# Wi-Fi
+ipconfig getifaddr en0
+
+# Ethernet (if used)
+ipconfig getifaddr en1
+```
+
+Use the IP shown on the *other* machine as `host` during `mirusync init`.
 
 ## Architecture
 
