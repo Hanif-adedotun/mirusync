@@ -10,21 +10,28 @@ const (
 	ColorDim     = "\033[2m"
 )
 
-// Block-style logo for "mirusync" — block characters with magenta/cyan gradient.
+// Block-style logo for "mirusync" — magenta (MIRU) + cyan (SYNC).
+// MIRU and SYNC are stored separately so we never slice UTF-8 in the middle of a
+// rune (byte-wise len/2 breaks box-drawing characters and shows as "?" in terminals).
 func PrintLogo() {
-	// Slant block letters: M I R U S Y N C (compact, engaging)
-	logo := []string{
-		"███╗   ███╗██╗██████╗ ██╗   ██╗███████╗██╗   ██╗███╗   ██╗ ██████╗",
-		"████╗ ████║██║██╔══██╗██║   ██║██╔════╝██║   ██║████╗  ██║██╔════╝",
-		"██╔████╔██║██║██████╔╝██║   ██║███████╗██║   ██║██╔██╗ ██║██║  ███╗",
-		"██║╚██╔╝██║██║██╔══██╗██║   ██║╚════██║██║   ██║██║╚██╗██║██║   ██║",
-		"██║ ╚═╝ ██║██║██║  ██║╚██████╔╝███████║╚██████╔╝██║ ╚████║╚██████╔╝",
-		"╚═╝     ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝",
+	logoMIRU := []string{
+		"███╗   ███╗██╗██████╗ ██╗   ██╗",
+		"████╗ ████║██║██╔══██╗██║   ██║",
+		"██╔████╔██║██║██████╔╝██║   ██║",
+		"██║╚██╔╝██║██║██╔══██╗██║   ██║",
+		"██║ ╚═╝ ██║██║██║  ██║╚██████╔╝",
+		"╚═╝     ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ",
 	}
-	// Color: first half of each line magenta, second half cyan
-	for _, line := range logo {
-		mid := len(line) / 2
-		fmt.Println(ColorMagenta + line[:mid] + ColorCyan + line[mid:] + ColorReset)
+	logoSYNC := []string{
+		"███████╗ ██╗  ██╗ ███╗███╗  ██████╗",
+		"██╔════╝ ╚██╗██╔╝ ████╗██║ ██╔════╝",
+		"███████╗  ╚███╔╝  ██╔██╗██ ██║     ",
+		"╚════██║   ██╔╝   ██║╚██╗█ ██║     ",
+		"██████╔╝   ██║    ██║ ╚███ ╚██████╗",
+		"╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝",
+	}
+	for i := range logoMIRU {
+		fmt.Println(ColorMagenta + logoMIRU[i] + ColorCyan + logoSYNC[i] + ColorReset)
 	}
 	fmt.Println()
 	fmt.Println(ColorDim + "  Sync folders between machines over SSH" + ColorReset)

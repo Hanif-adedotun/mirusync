@@ -10,7 +10,6 @@ import (
 	"github.com/hanif/mirusync/internal/config"
 	"github.com/hanif/mirusync/internal/prompt"
 	"github.com/hanif/mirusync/internal/ssh"
-	"github.com/hanif/mirusync/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -56,9 +55,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
-
-	fmt.Println()
-	tui.PrintLogo()
 
 	// --- Other machine ---
 	remoteHost, err := prompt.StringStyled("Other machine IP or hostname", "", prompt.Chevron, true)

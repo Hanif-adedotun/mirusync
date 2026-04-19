@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanif/mirusync/internal/config"
 	"github.com/hanif/mirusync/internal/prompt"
+	"github.com/hanif/mirusync/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,8 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("folder '%s' not found in configuration", folderName)
 	}
 
-	fmt.Printf("Editing folder '%s'\n", folderName)
+	fmt.Printf("%s%s%s\n", tui.ColorMagenta, "Settings Editor", tui.ColorReset)
+	fmt.Printf("%sEditing folder%s '%s'\n", tui.ColorCyan, tui.ColorReset, folderName)
 
 	for {
 		host, hostExists := cfg.Hosts[folder.RemoteHost]
@@ -49,37 +51,37 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		}
 
 		options := []string{
-			fmt.Sprintf("Folder local_path (%s)", folder.LocalPath),
-			fmt.Sprintf("Folder remote_host (%s)", folder.RemoteHost),
-			fmt.Sprintf("Folder remote_subpath (%s)", folder.RemoteSubpath),
-			fmt.Sprintf("Folder mode (%s)", folder.Mode),
-			fmt.Sprintf("Folder delete (%t)", folder.Delete),
-			fmt.Sprintf("Folder checksum (%t)", folder.Checksum),
-			fmt.Sprintf("Host user [%s] (%s)", hostLabel, host.User),
-			fmt.Sprintf("Host host [%s] (%s)", hostLabel, host.Host),
-			fmt.Sprintf("Host port [%s] (%d)", hostLabel, host.Port),
-			fmt.Sprintf("Host base_path [%s] (%s)", hostLabel, host.BasePath),
-			"Exit editor",
+			fmt.Sprintf("%sFolder%s local_path (%s)", tui.ColorCyan, tui.ColorReset, folder.LocalPath),
+			fmt.Sprintf("%sFolder%s remote_host (%s)", tui.ColorCyan, tui.ColorReset, folder.RemoteHost),
+			fmt.Sprintf("%sFolder%s remote_subpath (%s)", tui.ColorCyan, tui.ColorReset, folder.RemoteSubpath),
+			fmt.Sprintf("%sFolder%s mode (%s)", tui.ColorCyan, tui.ColorReset, folder.Mode),
+			fmt.Sprintf("%sFolder%s delete (%t)", tui.ColorCyan, tui.ColorReset, folder.Delete),
+			fmt.Sprintf("%sFolder%s checksum (%t)", tui.ColorCyan, tui.ColorReset, folder.Checksum),
+			fmt.Sprintf("%sHost%s user [%s] (%s)", tui.ColorMagenta, tui.ColorReset, hostLabel, host.User),
+			fmt.Sprintf("%sHost%s host [%s] (%s)", tui.ColorMagenta, tui.ColorReset, hostLabel, host.Host),
+			fmt.Sprintf("%sHost%s port [%s] (%d)", tui.ColorMagenta, tui.ColorReset, hostLabel, host.Port),
+			fmt.Sprintf("%sHost%s base_path [%s] (%s)", tui.ColorMagenta, tui.ColorReset, hostLabel, host.BasePath),
+			fmt.Sprintf("%sExit editor%s", tui.ColorDim, tui.ColorReset),
 		}
 
 		idx, err := prompt.SelectStyled("Select a field to edit", options, 0, prompt.Chevron, true)
 		if err != nil {
-			fmt.Printf("Invalid selection: %v\n", err)
+			fmt.Printf("%sInvalid selection:%s %v\n", tui.ColorMagenta, tui.ColorReset, err)
 			continue
 		}
 
 		if idx == len(options)-1 {
-			fmt.Println("No further changes.")
+			fmt.Printf("%sNo further changes.%s\n", tui.ColorDim, tui.ColorReset)
 			return nil
 		}
 
 		changed, err := applyEditSelection(cfg, folderName, idx)
 		if err != nil {
-			fmt.Printf("Edit cancelled: %v\n", err)
+			fmt.Printf("%sEdit cancelled:%s %v\n", tui.ColorMagenta, tui.ColorReset, err)
 			continue
 		}
 		if !changed {
-			fmt.Println("No changes made.")
+			fmt.Printf("%sNo changes made.%s\n", tui.ColorDim, tui.ColorReset)
 			continue
 		}
 
@@ -89,7 +91,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 
 		// Refresh local copy from map for next iteration.
 		folder = cfg.Folders[folderName]
-		fmt.Println("Change saved.")
+		fmt.Printf("%sChange saved.%s\n", tui.ColorCyan, tui.ColorReset)
 	}
 }
 
@@ -262,8 +264,8 @@ func confirmAndApplyString(field, oldValue, newValue string, apply func(string))
 	if oldValue == newValue {
 		return false, nil
 	}
-	fmt.Printf("Current %s: %s\n", field, oldValue)
-	fmt.Printf("New %s: %s\n", field, newValue)
+	fmt.Printf("%sCurrent%s %s: %s\n", tui.ColorDim, tui.ColorReset, field, oldValue)
+	fmt.Printf("%sNew%s %s: %s\n", tui.ColorCyan, tui.ColorReset, field, newValue)
 	ok, err := prompt.ConfirmStyled("Are you sure you want to apply this change?", false, prompt.Chevron, true)
 	if err != nil {
 		return false, err
@@ -279,8 +281,8 @@ func confirmAndApplyBool(field string, oldValue, newValue bool, apply func(bool)
 	if oldValue == newValue {
 		return false, nil
 	}
-	fmt.Printf("Current %s: %t\n", field, oldValue)
-	fmt.Printf("New %s: %t\n", field, newValue)
+	fmt.Printf("%sCurrent%s %s: %t\n", tui.ColorDim, tui.ColorReset, field, oldValue)
+	fmt.Printf("%sNew%s %s: %t\n", tui.ColorCyan, tui.ColorReset, field, newValue)
 	ok, err := prompt.ConfirmStyled("Are you sure you want to apply this change?", false, prompt.Chevron, true)
 	if err != nil {
 		return false, err
@@ -296,8 +298,8 @@ func confirmAndApplyInt(field string, oldValue, newValue int, apply func(int)) (
 	if oldValue == newValue {
 		return false, nil
 	}
-	fmt.Printf("Current %s: %d\n", field, oldValue)
-	fmt.Printf("New %s: %d\n", field, newValue)
+	fmt.Printf("%sCurrent%s %s: %d\n", tui.ColorDim, tui.ColorReset, field, oldValue)
+	fmt.Printf("%sNew%s %s: %d\n", tui.ColorCyan, tui.ColorReset, field, newValue)
 	ok, err := prompt.ConfirmStyled("Are you sure you want to apply this change?", false, prompt.Chevron, true)
 	if err != nil {
 		return false, err
