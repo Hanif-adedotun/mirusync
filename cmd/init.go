@@ -56,6 +56,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	fmt.Println()
+
 	// --- Other machine ---
 	remoteHost, err := prompt.StringStyled("Other machine IP or hostname", "", prompt.Chevron, true)
 	if err != nil {

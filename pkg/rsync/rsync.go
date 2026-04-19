@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"unicode"
 )
 
 type DryRunResult struct {
@@ -13,6 +14,14 @@ type DryRunResult struct {
 	FilesDeleted  int
 	TotalSize     int64
 	Output        string
+}
+
+// TotalChanges returns the sum of add/modify/delete counts from parsed itemize lines.
+func (r *DryRunResult) TotalChanges() int {
+	if r == nil {
+		return 0
+	}
+	return r.FilesAdded + r.FilesModified + r.FilesDeleted
 }
 
 type RSyncOptions struct {
@@ -82,6 +91,61 @@ func buildArgs(options RSyncOptions) []string {
 	return args
 }
 
+// itemizeNewMask is true when rsync's 9 update-flag characters are all '+' (brand-new path).
+func itemizeNewMask(itemize string) bool {
+	return len(itemize) >= 11 && itemize[2:11] == "+++++++++"
+}
+
+func applyItemizeChange(result *DryRunResult, itemize string) {
+	if strings.HasPrefix(itemize, "*deleting") {
+		result.FilesDeleted++
+		return
+	}
+
+	// Directory created on receiver: "cd+++++++++..." (see rsync --itemize-changes).
+	if strings.HasPrefix(itemize, "cd") && len(itemize) >= 3 {
+		if itemizeNewMask(itemize) {
+			result.FilesAdded++
+		} else if len(itemize) >= 11 {
+			result.FilesModified++
+		}
+		return
+	}
+
+	if len(itemize) < 2 || itemize[0] != '>' {
+		return
+	}
+
+	kind := itemize[1]
+	switch kind {
+	case 'f', 'd', 'L':
+		if itemizeNewMask(itemize) {
+			result.FilesAdded++
+		} else {
+			result.FilesModified++
+		}
+	default:
+		// Other transfer types (e.g. devices) ignored for summary counts.
+	}
+}
+
+func parseTotalSizeBytes(line string) int64 {
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "total size is") {
+		return 0
+	}
+	rest := strings.TrimPrefix(line, "total size is")
+	rest = strings.TrimSpace(rest)
+	// Stop at first space (rsync may append "speedup is ..." on the same line).
+	if i := strings.IndexFunc(rest, unicode.IsSpace); i >= 0 {
+		rest = rest[:i]
+	}
+	rest = strings.ReplaceAll(rest, ",", "")
+	var n int64
+	_, _ = fmt.Sscanf(rest, "%d", &n)
+	return n
+}
+
 func parseDryRunOutput(output string) *DryRunResult {
 	result := &DryRunResult{}
 
@@ -92,34 +156,24 @@ func parseDryRunOutput(output string) *DryRunResult {
 			continue
 		}
 
-		// Extract total size from summary line, if present.
 		if strings.HasPrefix(line, "total size is") {
-			var size int64
-			fmt.Sscanf(line, "total size is %d", &size)
-			result.TotalSize = size
+			if sz := parseTotalSizeBytes(line); sz > 0 {
+				result.TotalSize = sz
+			}
 			continue
 		}
 
-		// Expect out-format lines: %i|%n
 		parts := strings.SplitN(line, "|", 2)
 		if len(parts) != 2 {
-			// Not an out-format line; ignore (could be header/summary).
 			continue
 		}
-		change := parts[0]
-
-		// change is rsync's itemize string. First char indicates the type of update.
-		// See rsync man page, "The --itemize-changes option".
-		if strings.HasPrefix(change, ">f") {
-			// For now, treat all file updates as "files to add or modify".
-			// We can split into added/modified later if needed.
-			result.FilesAdded++
-		} else if strings.HasPrefix(change, "*deleting") {
-			result.FilesDeleted++
+		change := strings.TrimSpace(parts[0])
+		if change == "" {
+			continue
 		}
+
+		applyItemizeChange(result, change)
 	}
 
 	return result
 }
-
-

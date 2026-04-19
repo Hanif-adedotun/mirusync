@@ -35,7 +35,7 @@ func runPush(cmd *cobra.Command, args []string) error {
 	folderName := args[0]
 
 	eng := engine.NewEngine(pushForce, pushVerboseDryRun)
-	if err := eng.Push(folderName, pushDryRun); err != nil {
+	if err := eng.Push(folderName, pushDryRun, false); err != nil {
 		return fmt.Errorf("push failed: %w", err)
 	}
 

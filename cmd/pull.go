@@ -35,7 +35,7 @@ func runPull(cmd *cobra.Command, args []string) error {
 	folderName := args[0]
 
 	eng := engine.NewEngine(pullForce, pullVerboseDryRun)
-	if err := eng.Pull(folderName, pullDryRun); err != nil {
+	if err := eng.Pull(folderName, pullDryRun, false); err != nil {
 		return fmt.Errorf("pull failed: %w", err)
 	}
 

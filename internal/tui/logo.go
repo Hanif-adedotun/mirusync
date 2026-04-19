@@ -10,28 +10,21 @@ const (
 	ColorDim     = "\033[2m"
 )
 
-// Block-style logo for "mirusync" — magenta (MIRU) + cyan (SYNC).
-// MIRU and SYNC are stored separately so we never slice UTF-8 in the middle of a
-// rune (byte-wise len/2 breaks box-drawing characters and shows as "?" in terminals).
+// ASCII wordmark logo for "MIRUSYNC" with magenta/cyan split.
 func PrintLogo() {
-	logoMIRU := []string{
-		"███╗   ███╗██╗██████╗ ██╗   ██╗",
-		"████╗ ████║██║██╔══██╗██║   ██║",
-		"██╔████╔██║██║██████╔╝██║   ██║",
-		"██║╚██╔╝██║██║██╔══██╗██║   ██║",
-		"██║ ╚═╝ ██║██║██║  ██║╚██████╔╝",
-		"╚═╝     ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ",
+	// Custom ASCII glyphs keep "Y" visually distinct from "U" across terminals.
+	logo := []string{
+		" __  __ ___ ____  _   _ ____  __   __ _   _  ____ ",
+		"|  \\/  |_ _|  _ \\| | | / ___| \\ \\ / /| \\ | |/ ___|",
+		"| |\\/| || || |_) | | | \\___ \\  \\ V / |  \\| | |    ",
+		"| |  | || ||  _ <| |_| |___) |  | |  | |\\  | |___ ",
+		"|_|  |_|___|_| \\_\\\\___/|____/   |_|  |_| \\_|\\____|",
 	}
-	logoSYNC := []string{
-		"███████╗ ██╗  ██╗ ███╗███╗  ██████╗",
-		"██╔════╝ ╚██╗██╔╝ ████╗██║ ██╔════╝",
-		"███████╗  ╚███╔╝  ██╔██╗██ ██║     ",
-		"╚════██║   ██╔╝   ██║╚██╗█ ██║     ",
-		"██████╔╝   ██║    ██║ ╚███ ╚██████╗",
-		"╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝",
-	}
-	for i := range logoMIRU {
-		fmt.Println(ColorMagenta + logoMIRU[i] + ColorCyan + logoSYNC[i] + ColorReset)
+	// Color: first half of each line magenta, second half cyan
+	for _, line := range logo {
+		runes := []rune(line)
+		mid := len(runes) / 2
+		fmt.Println(ColorMagenta + string(runes[:mid]) + ColorCyan + string(runes[mid:]) + ColorReset)
 	}
 	fmt.Println()
 	fmt.Println(ColorDim + "  Sync folders between machines over SSH" + ColorReset)

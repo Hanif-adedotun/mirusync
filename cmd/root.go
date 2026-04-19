@@ -8,10 +8,12 @@ import (
 	"github.com/hanif/mirusync/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 var cfgFile string
 var version = "dev"
+var noLogo bool
 
 var rootCmd = &cobra.Command{
 	Use:   "mirusync",
@@ -21,11 +23,11 @@ var rootCmd = &cobra.Command{
 It uses rsync for efficient file transfers and provides safety guardrails
 for production use.`,
 	Version: version,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Show branding on regular command runs across the CLI.
-		if cmd.Name() != "completion" {
-			tui.PrintLogo()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := maybePrintLogo(cmd); err != nil {
+			return err
 		}
+		return cmd.Help()
 	},
 }
 
@@ -36,6 +38,33 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mirusync/config.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&noLogo, "no-logo", false, "omit the banner (useful for scripts and non-interactive use)")
+
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Bare `mirusync` uses RunE (logo there); avoid printing twice for subcommands only when cmd is root.
+		if cmd == rootCmd {
+			return nil
+		}
+		return maybePrintLogo(cmd)
+	}
+}
+
+func maybePrintLogo(cmd *cobra.Command) error {
+	if noLogo {
+		return nil
+	}
+	// Shell completion output must stay machine-parseable.
+	if cmd.Name() == "completion" {
+		return nil
+	}
+	if cmd.Flag("version") != nil && cmd.Flag("version").Changed {
+		return nil
+	}
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return nil
+	}
+	tui.PrintLogo()
+	return nil
 }
 
 func initConfig() {
@@ -63,5 +92,3 @@ func initConfig() {
 		}
 	}
 }
-
-

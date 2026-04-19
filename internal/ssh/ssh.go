@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hanif/mirusync/internal/config"
@@ -13,6 +14,65 @@ import (
 const (
 	mirusyncKeyName = "id_mirusync"
 )
+
+// MirusyncPrivateKeyPath returns the path to ~/.ssh/id_mirusync (private key).
+func MirusyncPrivateKeyPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".ssh", mirusyncKeyName), nil
+}
+
+// shellSingleQuote wraps s in single quotes for safe use inside sh -c / rsync -e.
+func shellSingleQuote(s string) string {
+	return `'` + strings.ReplaceAll(s, `'`, `'"'"'`) + `'`
+}
+
+func sshCommonOptions(strictHostKey string, connectTimeoutSec int) ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	sshDir := filepath.Join(home, ".ssh")
+	if err := os.MkdirAll(sshDir, 0700); err != nil {
+		return nil, err
+	}
+
+	privPath, err := MirusyncPrivateKeyPath()
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []string{
+		"-o", fmt.Sprintf("ConnectTimeout=%d", connectTimeoutSec),
+		"-o", "StrictHostKeyChecking=" + strictHostKey,
+	}
+
+	if st, err := os.Stat(privPath); err == nil && !st.IsDir() {
+		opts = append(opts,
+			"-i", privPath,
+			"-o", "IdentitiesOnly=yes",
+			"-o", "BatchMode=yes",
+			"-o", "ControlMaster=auto",
+			"-o", "ControlPath=" + filepath.Join(sshDir, "mirusync-cm-%r@%h:%p"),
+			"-o", "ControlPersist=60",
+		)
+	}
+
+	return opts, nil
+}
+
+// buildSSHExecArgs returns argv for `ssh` (no remote target or command).
+func buildSSHExecArgs(port int, strictHostKey string, connectTimeoutSec int) ([]string, error) {
+	opts, err := sshCommonOptions(strictHostKey, connectTimeoutSec)
+	if err != nil {
+		return nil, err
+	}
+	args := []string{"ssh", "-p", fmt.Sprintf("%d", port)}
+	args = append(args, opts...)
+	return args, nil
+}
 
 func CheckConnectivity(hostName string, timeout time.Duration) error {
 	host, err := config.GetHost(hostName)
@@ -24,9 +84,12 @@ func CheckConnectivity(hostName string, timeout time.Duration) error {
 
 // CheckConnectivityRaw verifies SSH access without using config (e.g. for init wizard).
 func CheckConnectivityRaw(user, host string, port int, timeout time.Duration) error {
-	sshCmd := fmt.Sprintf("ssh -p %d -o ConnectTimeout=%d -o StrictHostKeyChecking=accept-new %s@%s 'echo ok'",
-		port, int(timeout.Seconds()), user, host)
-	cmd := exec.Command("sh", "-c", sshCmd)
+	args, err := buildSSHExecArgs(port, "accept-new", int(timeout.Seconds()))
+	if err != nil {
+		return err
+	}
+	args = append(args, fmt.Sprintf("%s@%s", user, host), "echo ok")
+	cmd := exec.Command(args[0], args[1:]...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("cannot connect to %s@%s:%d - %v (output: %s)", user, host, port, err, string(output))
@@ -37,18 +100,45 @@ func CheckConnectivityRaw(user, host string, port int, timeout time.Duration) er
 	return nil
 }
 
+// BuildSSHCommand returns the shell command string for rsync's -e option (ssh + options only).
 func BuildSSHCommand(hostName string) string {
 	host, err := config.GetHost(hostName)
 	if err != nil {
 		return ""
 	}
-	// For rsync's -e option we must pass ONLY the remote shell (ssh + options),
-	// NOT the user@host target. rsync adds user@host itself via the source/dest.
-	// Example:
-	//   rsync -e "ssh -p 22 -o StrictHostKeyChecking=no" src user@host:/path
-	// If we include user@host here, the remote shell sees "user@host" as the command
-	// to run, which leads to `command not found: user@host`.
-	return fmt.Sprintf("ssh -p %d -o StrictHostKeyChecking=no", host.Port)
+	s, err := buildSSHCommandForPort(host.Port, "no", 30)
+	if err != nil {
+		return ""
+	}
+	return s
+}
+
+// buildSSHCommandForPort builds `ssh ...` for rsync -e; strictHostKey is `no` or `accept-new`.
+func buildSSHCommandForPort(port int, strictHostKey string, connectTimeoutSec int) (string, error) {
+	opts, err := sshCommonOptions(strictHostKey, connectTimeoutSec)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	b.WriteString("ssh ")
+	b.WriteString("-p ")
+	b.WriteString(fmt.Sprintf("%d", port))
+	for i := 0; i < len(opts); i += 2 {
+		if i+1 >= len(opts) {
+			break
+		}
+		b.WriteString(" ")
+		b.WriteString(opts[i])
+		b.WriteString(" ")
+		// Quote values that may contain spaces or special chars (e.g. ControlPath).
+		val := opts[i+1]
+		if strings.ContainsAny(val, " \t\n\"'\\") || strings.HasPrefix(val, "-") {
+			b.WriteString(shellSingleQuote(val))
+		} else {
+			b.WriteString(val)
+		}
+	}
+	return b.String(), nil
 }
 
 func BuildRemotePath(hostName string, subpath string) string {
@@ -143,5 +233,3 @@ func CopyID(keyPath, user, host string, port int) error {
 	}
 	return nil
 }
-
-

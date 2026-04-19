@@ -30,7 +30,7 @@ Example:
 }
 
 func init() {
-	syncCmd.Flags().BoolVar(&syncDryRun, "dry-run", true, "Show what would be synced without actually syncing (default: true)")
+	syncCmd.Flags().BoolVar(&syncDryRun, "dry-run", false, "Show what would be synced without actually syncing")
 	syncCmd.Flags().BoolVar(&syncForce, "force", false, "Override safety checks (not recommended)")
 	syncCmd.Flags().BoolVar(&syncVerboseDryRun, "verbose-dry-run", false, "Show raw rsync dry-run output")
 	rootCmd.AddCommand(syncCmd)

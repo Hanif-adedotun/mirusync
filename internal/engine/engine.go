@@ -21,7 +21,7 @@ func NewEngine(force bool, verboseDryRun bool) *Engine {
 	return &Engine{force: force, verboseDryRun: verboseDryRun}
 }
 
-func (e *Engine) Push(folderName string, dryRunOnly bool) error {
+func (e *Engine) Push(folderName string, dryRunOnly bool, skipConnectivity bool) error {
 	folder, err := config.GetFolder(folderName)
 	if err != nil {
 		return err
@@ -36,9 +36,10 @@ func (e *Engine) Push(folderName string, dryRunOnly bool) error {
 		return err
 	}
 
-	// Check SSH connectivity
-	if err := ssh.CheckConnectivity(folder.RemoteHost, 5*time.Second); err != nil {
-		return err
+	if !skipConnectivity {
+		if err := ssh.CheckConnectivity(folder.RemoteHost, 5*time.Second); err != nil {
+			return err
+		}
 	}
 
 	// Build paths
@@ -65,13 +66,16 @@ func (e *Engine) Push(folderName string, dryRunOnly bool) error {
 
 	// Show preview
 	fmt.Println("\n📋 Dry-run preview:")
-	fmt.Printf("  + %d files to add\n", dryRunResult.FilesAdded)
-	fmt.Printf("  ~ %d files to modify\n", dryRunResult.FilesModified)
+	fmt.Printf("  + %d to add\n", dryRunResult.FilesAdded)
+	fmt.Printf("  ~ %d to update\n", dryRunResult.FilesModified)
 	if folder.Delete {
-		fmt.Printf("  - %d files to delete\n", dryRunResult.FilesDeleted)
+		fmt.Printf("  - %d to delete\n", dryRunResult.FilesDeleted)
 	}
 	if dryRunResult.TotalSize > 0 {
 		fmt.Printf("  📦 Total size: %s\n", formatSize(dryRunResult.TotalSize))
+	}
+	if dryRunResult.TotalSize > 0 && dryRunResult.TotalChanges() == 0 {
+		fmt.Println("  Note: transfer size was reported but no itemize lines matched; use --verbose-dry-run for raw rsync output.")
 	}
 
 	if e.verboseDryRun {
@@ -106,7 +110,7 @@ func (e *Engine) Push(folderName string, dryRunOnly bool) error {
 	return nil
 }
 
-func (e *Engine) Pull(folderName string, dryRunOnly bool) error {
+func (e *Engine) Pull(folderName string, dryRunOnly bool, skipConnectivity bool) error {
 	folder, err := config.GetFolder(folderName)
 	if err != nil {
 		return err
@@ -121,9 +125,10 @@ func (e *Engine) Pull(folderName string, dryRunOnly bool) error {
 		return err
 	}
 
-	// Check SSH connectivity
-	if err := ssh.CheckConnectivity(folder.RemoteHost, 5*time.Second); err != nil {
-		return err
+	if !skipConnectivity {
+		if err := ssh.CheckConnectivity(folder.RemoteHost, 5*time.Second); err != nil {
+			return err
+		}
 	}
 
 	// Build paths
@@ -150,13 +155,16 @@ func (e *Engine) Pull(folderName string, dryRunOnly bool) error {
 
 	// Show preview
 	fmt.Println("\n📋 Dry-run preview:")
-	fmt.Printf("  + %d files to add\n", dryRunResult.FilesAdded)
-	fmt.Printf("  ~ %d files to modify\n", dryRunResult.FilesModified)
+	fmt.Printf("  + %d to add\n", dryRunResult.FilesAdded)
+	fmt.Printf("  ~ %d to update\n", dryRunResult.FilesModified)
 	if folder.Delete {
-		fmt.Printf("  - %d files to delete\n", dryRunResult.FilesDeleted)
+		fmt.Printf("  - %d to delete\n", dryRunResult.FilesDeleted)
 	}
 	if dryRunResult.TotalSize > 0 {
 		fmt.Printf("  📦 Total size: %s\n", formatSize(dryRunResult.TotalSize))
+	}
+	if dryRunResult.TotalSize > 0 && dryRunResult.TotalChanges() == 0 {
+		fmt.Println("  Note: transfer size was reported but no itemize lines matched; use --verbose-dry-run for raw rsync output.")
 	}
 
 	if e.verboseDryRun {
@@ -228,13 +236,13 @@ func (e *Engine) Sync(folderName string, dryRunOnly bool) error {
 
 	// Step 1: Pull remote changes
 	fmt.Println("\n📥 Step 1: Pulling remote changes...")
-	if err := e.Pull(folderName, dryRunOnly); err != nil {
+	if err := e.Pull(folderName, dryRunOnly, true); err != nil {
 		return fmt.Errorf("pull failed: %w", err)
 	}
 
 	// Step 2: Push local changes
 	fmt.Println("\n📤 Step 2: Pushing local changes...")
-	if err := e.Push(folderName, dryRunOnly); err != nil {
+	if err := e.Push(folderName, dryRunOnly, true); err != nil {
 		return fmt.Errorf("push failed: %w", err)
 	}
 
